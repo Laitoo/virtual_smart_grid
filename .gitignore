@@ -1,0 +1,19 @@
+# Dependencies (install dengan `npm install` di API/ dan "WEB SITE/")
+node_modules/
+
+# Rahasia dan konfigurasi lokal
+.env
+.env.*
+!.env.example
+
+# Build output SolidStart / Vinxi
+.output/
+.vinxi/
+dist/
+.solid/
+
+# Log dan file OS/editor
+*.log
+.DS_Store
+.vscode/
+.idea/

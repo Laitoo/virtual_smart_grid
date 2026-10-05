@@ -3,14 +3,21 @@ const Row = {}
 
 Row.tabelName = `users`
 
+// Role yang valid (sama dengan enum di tabel dan menu di website).
+Row.roles = ['root', 'admin', 'dosen', 'asisten', 'praktikan', 'plts', 'pltmh', 'pltb'];
+
+// Kolom yang aman dikirim ke client (tanpa password / refresh_token).
+Row.safeColumns = `id, name, role`;
+
 Row.create = () => {
     let query = `CREATE TABLE IF NOT EXISTS ${Row.tabelName}
-        ( 
-            id int(11) NOT NULL PRIMARY KEY AUTO_INCREMENT, 
-            name varchar(255) NOT NULL, 
-            password varchar(255) NOT NULL, 
-            role enum('root', 'admin', 'dosen', 'asisten', 'praktikan') DEFAULT 'praktikan'
-        ) 
+        (
+            id int(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            password varchar(255) NOT NULL,
+            refresh_token varchar(255) NOT NULL DEFAULT '',
+            role enum('root','admin','dosen','asisten','praktikan','plts','pltmh','pltb') DEFAULT 'praktikan'
+        )
         ENGINE=InnoDB DEFAULT CHARSET=utf8;`
     // console.log("user.model.js:create", query)
     try {
@@ -28,13 +35,15 @@ Row.insert = (tabelName, newData, result) => {
             return;
         }
 
-        console.log(`created ${Row.tabelName}: `, { id: res.insertId, ...newData });
-        result(null, { id: res.insertId, ...newData });
+        // Jangan ikut mengembalikan hash password.
+        const { password, ...safeData } = newData;
+        console.log(`created ${Row.tabelName}: `, { id: res.insertId, ...safeData });
+        result(null, { id: res.insertId, ...safeData });
     });
 };
 
 Row.findById = (id, result) => {
-    sql.query(`SELECT * FROM ${Row.tabelName} WHERE id = ${id}`, (err, res) => {
+    sql.query(`SELECT ${Row.safeColumns} FROM ${Row.tabelName} WHERE id = ?`, [id], (err, res) => {
         if (err) {
             console.log("error: ", err);
             result(err, null);
@@ -42,7 +51,6 @@ Row.findById = (id, result) => {
         }
 
         if (res.length) {
-            console.log("found Row: ", res[0]);
             result(null, res[0]);
             return;
         }
@@ -52,36 +60,34 @@ Row.findById = (id, result) => {
     });
 };
 
+// Dipakai untuk login, jadi sengaja mengembalikan baris lengkap (termasuk hash password).
+// Pemanggil WAJIB membuang kolom password sebelum mengirimnya ke client.
 Row.findByName = (name, result) => {
-    const str = `SELECT * FROM ${Row.tabelName} WHERE name = "${name}"`
-    // console.log("Query: ", str);
-    sql.query(str, (err, res) => {
+    sql.query(`SELECT * FROM ${Row.tabelName} WHERE name = ?`, [name], (err, res) => {
         if (err) {
             console.log("error: ", err);
             result(err, null);
             return;
         }
         if (res.length) {
-            // console.log("found Row: ", res[0]);
             result(null, { state: true, data: res[0] });
             return;
         }
 
-        // not found Row with the id
+        // not found Row with the name
         result(null, { state: false, code: -1, message: "user name not_found" }, null);
     });
 };
 
 Row.getAll = (result) => {
 
-    let query = `SELECT * FROM ${Row.tabelName} `
+    let query = `SELECT ${Row.safeColumns} FROM ${Row.tabelName} `
     sql.query(query, (err, res) => {
         if (err) {
             console.log("error: ", err);
-            result(null, err);
+            result(err, null);
             return;
         }
-        // console.log("users.model.js:getAll", res);
         result(null, res);
     });
 };

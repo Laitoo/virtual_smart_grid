@@ -13,28 +13,44 @@ module.exports = async ( url, topics, callback ) => {
         clientId, clean: true, connectTimeout: 4000, reconnectPeriod: 1000
     });
 
+    // Handler "message" didaftarkan sekali di luar "connect". Sebelumnya didaftarkan di dalam
+    // "connect", sehingga setiap reconnect menambah handler baru dan pesan diproses berkali-kali.
+    client.on( "message", (topic,payload) => {
+
+        let data;
+        try {
+            data = JSON.parse(payload);
+        } catch (error) {
+            // Satu payload rusak dari alat tidak boleh menjatuhkan seluruh server API.
+            console.log(`MQTT payload bukan JSON valid pada topic '${topic}'`, error.message);
+            return;
+        }
+
+        const split = topic.split("/");
+        const identifier = split[1];
+        const group = split[2];
+        const code = split[3];
+
+        try {
+            callback( socket, group, code, data );
+        } catch (error) {
+            console.log(`MQTT handler error pada topic '${topic}'`, error);
+        }
+
+    })
+
     client.on( "connect", () => {
         console.log(`MQTT connection to ${url} success, your id ${clientId}`);
 
         client.subscribe(topics, function (err) {
-            console.log(`Subscribe to topic '${topics}`)
+            if (err) console.log(`Subscribe gagal`, err.message);
+            else console.log(`Subscribe to topic '${topics}`)
         })
 
-        client.on( "message", async(topic,payload) => {
+    })
 
-            const data = JSON.parse(payload);
-            const split = topic.split("/");
-            const identifier = split[1];
-            const group = split[2];
-            const code = split[3];
-
-            // if ( socket && true && (group === "pltmh" ) ) {
-                // console.log(`MQTT message received on topic '${topic}'`, identifier, group,code );
-                callback( socket, group, code, data );
-            // }
-
-        })
-
+    client.on( "error", (error) => {
+        console.log(`MQTT error: ${error.message}`);
     })
 
 }
