@@ -1,84 +1,86 @@
-const jwt = require('jsonwebtoken');
 const { mqttEmiter } = require('../services/realtime/mqtt.service');
+const { canControlPlant } = require('../middleware/verifyToken.middleware');
 
-const publish = (token, command, data, request, response) => {
-    // Memisahkan "Bearer " jika token dikirim menggunakan format standar
-    const actualToken = token.startsWith('Bearer ') ? token.slice(7, token.length) : token;
-
-    jwt.verify(actualToken, process.env.SECRET_KEY, async (err, decoded) => {
-        console.log(err, decoded)
-        if (err) {
-            response.status(403).send({
-                error: true,
-                message: err.message || `Some error occurred while retrieving Test .`
-            });
-        } else {
-            // request.userId = decoded.id;
-            const result = await mqttEmiter({ command, data })
-            console.log(command, data)
-            // response.json({ id: request.userId, role: decoded.role, data: request.body })
-            response.json(result)
-        }
-    });
-}
-
-exports.pltb = (request, response) => {
-    const token = request.headers['authorization'];
-    // console.log("controller/command.controller.jsx:pltb:body", request.body)
-    if (!token) return response.sendStatus(403);
-    publish(token, process.env.VITE_MQTT_PLTB_COMMAND, request.body, request, response)
+// Nama variabel .env yang berisi topik MQTT perintah untuk tiap pembangkit.
+// (Nama berawalan VITE_ dipertahankan agar .env yang sudah ada tetap berlaku.)
+const TOPIC_ENV = {
+    pltb: 'VITE_MQTT_PLTB_COMMAND',
+    pltmh: 'VITE_MQTT_PLTMH_COMMAND',
+    pv: 'VITE_MQTT_PV_COMMAND',
 };
 
-exports.pltmh = (request, response) => {
-    const token = request.headers['authorization'];
-    // console.log("controller/command.controller.jsx:pltmh:body", request.body)
-    if (!token) return response.sendStatus(403);
-    publish(token, process.env.VITE_MQTT_PLTMH_COMMAND, request.body, request, response)
-};
+const TAG_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
 
-exports.pv = (request, response) => {
-    const token = request.headers['authorization'];
-    console.log("controller/command.controller.jsx:pv:body", request.body)
-    if (!token) return response.sendStatus(403);
-    publish(token, process.env.VITE_MQTT_PV_COMMAND, request.body, request, response)
-};
-
-// --- FITUR BARU: SMART VOLTAGE CONTROL (SINERGI) ---
-exports.setVoltage = (request, response) => {
-    const token = request.headers['authorization'];
-    if (!token) return response.sendStatus(403);
-
-    // Menerima request dari komponen frontend SmartVoltageControl
-    const { plant_type, target_voltage } = request.body;
-
-    if (!plant_type || target_voltage === undefined) {
-        return response.status(400).send({ 
-            error: true, 
-            message: "plant_type dan target_voltage harus diisi!" 
+// Kirim satu perintah { tag, value } ke topik MQTT. Token sudah diverifikasi oleh middleware.
+const publish = async (topic, data, response) => {
+    if (!topic) {
+        return response.status(500).json({
+            error: true,
+            message: 'Topik MQTT perintah belum dikonfigurasi (periksa file .env)',
         });
     }
+    try {
+        const result = await mqttEmiter({ command: topic, data });
+        response.json(result);
+    } catch (error) {
+        console.log('controller/command.controller.js:publish error', error);
+        response.status(500).json({ error: true, message: error.message || 'Gagal mengirim perintah' });
+    }
+};
 
-    // 1. Tentukan topik (command) MQTT berdasarkan jenis pembangkit
-    let mqttTopic;
-    if (plant_type === 'pltb') {
-        mqttTopic = process.env.VITE_MQTT_PLTB_COMMAND;
-    } else if (plant_type === 'pltmh') {
-        mqttTopic = process.env.VITE_MQTT_PLTMH_COMMAND;
-    } else if (plant_type === 'plts' || plant_type === 'pv') {
-        mqttTopic = process.env.VITE_MQTT_PV_COMMAND;
-    } else {
-        return response.status(400).send({ error: true, message: "plant_type tidak valid!" });
+// Perintah umum dari tombol-tombol di website: body = { tag, value }
+const commandFor = (plant, topicKey) => (request, response) => {
+    const { tag, value } = request.body || {};
+
+    if (typeof tag !== 'string' || !TAG_PATTERN.test(tag)) {
+        return response.status(400).json({ error: true, message: 'tag perintah tidak valid' });
+    }
+    if (value === undefined || value === null || String(value).length > 32) {
+        return response.status(400).json({ error: true, message: 'value perintah tidak valid' });
     }
 
-    // 2. Susun payload untuk alat
-    // Menggunakan struktur data standar seperti yang Anda gunakan di alat (contoh: { tag: 'fan', value: '1' })
-    const dataPayload = {
-        tag: "set_voltage", 
-        value: String(target_voltage) // Diubah ke string untuk mengantisipasi alat yang membaca payload sebagai string
-    };
+    console.log(`command.controller:${plant}`, { user: request.userId, role: request.userRole, tag, value });
+    return publish(process.env[TOPIC_ENV[topicKey]], { tag, value: String(value) }, response);
+};
 
-    console.log(`controller/command.controller.js:setVoltage:body`, request.body);
+exports.pltb = commandFor('pltb', 'pltb');
+exports.pltmh = commandFor('pltmh', 'pltmh');
+exports.pv = commandFor('pv', 'pv');
 
-    // 3. Eksekusi pengiriman menggunakan fungsi publish bawaan Anda
-    publish(token, mqttTopic, dataPayload, request, response);
+// --- SMART VOLTAGE CONTROL (SINERGI) ---
+// Body: { plant_type: 'pltb' | 'pltmh' | 'plts' | 'pv', target_voltage: number }
+exports.setVoltage = (request, response) => {
+    const { plant_type, target_voltage } = request.body || {};
+
+    const plant = String(plant_type || '').toLowerCase();
+    const topicKey = plant === 'plts' ? 'pv' : plant;
+    if (!TOPIC_ENV[topicKey]) {
+        return response.status(400).json({ error: true, message: 'plant_type tidak valid (pltb, pltmh, plts/pv)' });
+    }
+
+    // Satu pembangkit per perintah, jadi otorisasi dicek di sini (plant baru diketahui dari body).
+    if (!canControlPlant(request.userRole, plant)) {
+        return response.status(403).json({ error: true, message: `Role '${request.userRole}' tidak boleh mengendalikan ${plant}` });
+    }
+
+    // Batas tegangan alat. Bisa diubah lewat .env (VOLTAGE_MIN / VOLTAGE_MAX).
+    const min = Number(process.env.VOLTAGE_MIN || 5);
+    const max = Number(process.env.VOLTAGE_MAX || 24);
+
+    if (target_voltage === undefined || target_voltage === null || target_voltage === '') {
+        return response.status(400).json({ error: true, message: 'target_voltage harus diisi' });
+    }
+    const voltage = Number(target_voltage);
+    if (!Number.isFinite(voltage)) {
+        return response.status(400).json({ error: true, message: 'target_voltage harus berupa angka' });
+    }
+    if (voltage < min || voltage > max) {
+        return response.status(400).json({ error: true, message: `target_voltage harus antara ${min} V dan ${max} V` });
+    }
+
+    // Dibulatkan 2 desimal agar tidak mengirim noise floating point (mis. 12.100000000000001).
+    const value = String(Math.round(voltage * 100) / 100);
+
+    console.log('command.controller:setVoltage', { user: request.userId, role: request.userRole, plant, value });
+    return publish(process.env[TOPIC_ENV[topicKey]], { tag: 'set_voltage', value }, response);
 };

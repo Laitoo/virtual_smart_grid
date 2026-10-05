@@ -95,6 +95,9 @@ const cbMqtt = (socket, group, code, data) => {
                 data => {
                     fileExist[index] = true;
                 }
+            ).catch(
+                // Tanpa catch, kegagalan database (mis. MySQL mati) akan menjadi unhandled rejection.
+                error => console.log("realtime: gagal membuat tabel log", group, error && error.msg ? error.msg : error)
             )
         }
         count[index]++;

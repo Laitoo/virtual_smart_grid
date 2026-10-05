@@ -1,62 +1,47 @@
 var moment = require('moment-timezone');
 const model = require("../models/log.model");
 
-function Hour() {
-    const items = [];
-    new Array(24).fill().forEach(
-        (acc, index) => {
-            items.push(moment({ hour: index }).format('HH:00:00'));
-        }
-    )
-    return items;
-}
-
-const getDateRange = (firstDate, lastDate, hourly) => {
-
-    const hours = Hour()
-
-    console.log(firstDate, lastDate)
-
-    if (firstDate.isSame(lastDate, 'day'))
-        return [lastDate];
-
-    let date = firstDate
-
-    let dates = [];
-
-    do {
-        dates.push(date.format(process.env.DATE_FORMAT_LONG));
-        // console.log("COUNT", date.format(process.env.DATE_FORMAT))
-        date = date.add(1, 'days');
-    } while (date.isBefore(lastDate));
-    return dates;
-};
-
 exports.createTable = (periode) => {
-    model.create(periode);
+    model.create(periode).catch(error => console.log("log.controller createTable", error));
 }
 
+// GET /log/daily?group=&date=YYYY-MM-DD&periode=1|2|3[&limit=&offset=]
 exports.findDaily = async (request, response) => {
-    let params = {
-        group: request.query.group,
-        date: request.query.date,
-        periode: request.query.periode,
+    const { group, date, periode } = request.query;
+
+    if (!model.isValidGroup(group)) {
+        return response.status(400).json({ error: true, message: "group tidak valid" });
     }
+    if (typeof date !== "string" || !moment(date, "YYYY-MM-DD", true).isValid()) {
+        return response.status(400).json({ error: true, message: "date harus berformat YYYY-MM-DD" });
+    }
+    if (![1, 2, 3].includes(Number(periode))) {
+        return response.status(400).json({ error: true, message: "periode harus 1 (harian), 2 (jam), atau 3 (menit)" });
+    }
+
+    let params = { group, date, periode: Number(periode) }
+
     const limit = Number(request.query.limit)
     const offset = Number(request.query.offset)
     if (request.query.limit && request.query.offset) {
-        if (limit > 0 && offset >= 0) {
+        if (Number.isInteger(limit) && Number.isInteger(offset) && limit > 0 && offset >= 0) {
             params.limit = limit
             params.offset = offset
         }
     }
-    
-    await model.create(params);
+
+    try {
+        await model.create(params);
+    } catch (error) {
+        return response.status(500).json({ error: true, message: error.msg || "Gagal menyiapkan tabel log" });
+    }
+
     model.findDaily(
         params,
         (err, data) => {
             if (err)
-                response.status(500).send({
+                response.status(500).json({
+                    error: true,
                     message:
                         err.message || `Some error occurred while retrieving Test .`
                 });

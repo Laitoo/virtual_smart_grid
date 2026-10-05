@@ -1,20 +1,20 @@
-const { verifyToken } = require("../middleware/verifyToken.middleware");
+const { verifyToken, authorizePlant } = require("../middleware/verifyToken.middleware");
 
 module.exports = (app) => {
 
     var ctrl = require("../controller/command.controller");
     var router = require("express").Router();
-    // router.mqttService = mqttService;
 
-    // console.log("command.route.js")
+    // Semua perintah wajib login, lalu dicek role-nya terhadap pembangkit yang dituju.
+    router.post("/pltmh", verifyToken, authorizePlant("pltmh"), ctrl.pltmh);
+    router.post("/pltb", verifyToken, authorizePlant("pltb"), ctrl.pltb);
+    router.post("/ongrid", verifyToken, authorizePlant("ongrid"), ctrl.pv);
+    router.post("/offgrid", verifyToken, authorizePlant("offgrid"), ctrl.pv);
+    router.post("/pv", verifyToken, authorizePlant("pv"), ctrl.pv);
 
-    router.post("/pltmh", verifyToken, ctrl.pltmh);
-    router.post("/pltb", verifyToken, ctrl.pltb);
-    router.post("/ongrid", verifyToken, ctrl.pv);
-    router.post("/offgrid", verifyToken, ctrl.pv);
-    router.post("/pv", verifyToken, ctrl.pv);
-    router.post('/set-voltage', commandController.setVoltage);
-    
+    // Otorisasi per pembangkit dilakukan di dalam controller (plant_type ada di body).
+    router.post("/set-voltage", verifyToken, ctrl.setVoltage);
+
     app.use('/command', router);
 
 }

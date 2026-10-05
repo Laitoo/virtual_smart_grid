@@ -1,4 +1,4 @@
-const { verifyToken } = require("../middleware/verifyToken.middleware");
+const { verifyToken, requireRole } = require("../middleware/verifyToken.middleware");
 
 module.exports = app => {
 
@@ -10,10 +10,11 @@ module.exports = app => {
     console.log("users.route:users.controller.js")
 
     router.post("/login", ctrl.login);
-    router.post("/insert", ctrl.insert);
+    // Mengelola akun hanya untuk root/admin.
+    router.post("/insert", verifyToken, requireRole("root", "admin"), ctrl.insert);
     router.get("/byToken", verifyToken, ctrl.findByToken);
-    router.get("/", ctrl.findAll);
-    
+    router.get("/", verifyToken, requireRole("root", "admin"), ctrl.findAll);
+
     app.use('/user', router);
 
 }
