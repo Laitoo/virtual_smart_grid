@@ -1,0 +1,11 @@
+[
+    { "attr": "heater", "field": "pv_heater", "dataType": "int" },
+    { "attr": "fan", "field": "pv_fan", "dataType": "int" },
+    { "attr": "fanstep", "field": "pv_stap", "dataType": "int" },
+    { "attr": "dimmer", "field": "pv_dimmer", "dataType": "int" },
+    { "attr": "pv_lux", "field": "pv_lux", "dataType": "int" },
+    { "attr": "voltage", "field": "pv_volt", "dataType": "int" },
+    { "attr": "current", "field": "pv_current", "dataType": "int" },
+    { "attr": "temperature", "field": "pv_temperature", "dataType": "int" },
+    { "attr": "humidity", "field": "pv_humidity", "dataType": "int" }
+]

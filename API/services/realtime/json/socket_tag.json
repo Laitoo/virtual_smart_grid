@@ -1,0 +1,10 @@
+{
+    "refresh": "refresh",
+    "init": "init",
+    "alarm": "alarm",
+    "pltsPV": "monitoring32122",
+    "pltsOnGrid": "ongrid",
+    "pltsOffGrid": "offgrid",
+    "pltb": "pltb",
+    "pltmh": "pltmh"
+}

@@ -1,0 +1,7 @@
+[
+    { "attr": "windSpeed", "field": "WIND_SPEED", "dataType": "int" },
+    { "attr": "fanStep", "field": "PLC_FAN_STEP", "dataType": "int" },
+    { "attr": "voltage", "field": "VOLTAGE", "dataType": "int" },
+    { "attr": "current", "field": "CURRENT", "dataType": "int" },
+    { "attr": "turbinRotation", "field": "TURBIN_ROTATION", "dataType": "int" }
+]

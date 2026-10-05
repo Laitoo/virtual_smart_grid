@@ -1,0 +1,21 @@
+@url = http://localhost:3080/api
+# @url = https://apitelu.sinergi-portal.com/api
+
+@start_date = 2024-07-08 20:00:00
+@end_date = 2024-07-10 23:59:00
+
+# @route = users
+@route = command
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6ImFzaXN0ZW4iLCJpYXQiOjE3MzQzMzA0OTAsImV4cCI6MTczNDQxNjg5MH0.TDk7f6QKrroD7F4vMNGlNrWms3gSbQn4dla63Rgx9R4
+
+###
+POST {{url}}/{{route}}/pv
+content-type: application/json
+Authorization: {{token}}
+
+{
+    "PV_SPRAYER": "0",
+    "PV_HEATER": "0",
+    "PV_FAN_UP": "0",
+    "PV_FAN_DOWN": "0"
+}

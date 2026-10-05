@@ -1,0 +1,11 @@
+.hero{
+     
+        /* margin: 0;s */
+        height: 100vh; /* Mengatur tinggi penuh layar */
+        background-image: url('./update.jpg');
+        background-size: cover; /* Membuat gambar menyesuaikan tanpa distorsi */
+        background-position: center; /* Memusatkan gambar */
+        background-repeat: no-repeat; /* Tidak mengulang gambar */
+      
+      
+}       

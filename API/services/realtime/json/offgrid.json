@@ -1,0 +1,7 @@
+[
+    { "attr": "batteryVoltage", "field": "BATTERY_VOLTAGE", "dataType": "int" },
+    { "attr": "batteryCurrent", "field": "BATTERY_CURRENT", "dataType": "int" },
+    { "attr": "batteryCondition", "field": "BATTERY_CONDITION", "dataType": "int" },
+    { "attr": "sccVoltage", "field": "SCC_VOLTAGE", "dataType": "int" },
+    { "attr": "sccCurrent", "field": "SCC_CURRENT", "dataType": "int" }
+]

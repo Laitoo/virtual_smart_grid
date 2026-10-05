@@ -1,0 +1,8 @@
+[
+    { "attr": "dcVoltage", "field": "DC_VOLTAGE", "dataType": "int" },
+    { "attr": "dcCurrent", "field": "DC_CURRENT", "dataType": "int" },
+    { "attr": "acCurrent", "field": "AC_CURRENT", "dataType": "int" },
+    { "attr": "acVoltage", "field": "AC_VOLTAGE", "dataType": "int" },
+    { "attr": "pvPower", "field": "PV_POWER", "dataType": "int" },
+    { "attr": "acFrequency", "field": "AC_FREQUENCY", "dataType": "int" }
+]
